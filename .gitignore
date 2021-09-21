@@ -1,2 +1,5 @@
 .DS_Store
-xcuserdata
+/.build
+/Packages
+/*.xcodeproj
+xcuserdata/
