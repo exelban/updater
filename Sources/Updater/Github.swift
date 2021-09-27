@@ -12,7 +12,7 @@
 import Foundation
 
 extension Updater {
-    struct Github: Provider {
+    public struct Github: Provider {
         private let user: String
         private let repo: String
         private let asset: String

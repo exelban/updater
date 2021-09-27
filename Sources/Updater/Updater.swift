@@ -12,7 +12,7 @@
 import Cocoa
 import SystemConfiguration
 
-protocol Provider {
+public protocol Provider {
     func latest(_ completion: @escaping (_ result: Updater.Release?, _ error: Error?) -> Void)
 }
 
@@ -20,10 +20,10 @@ extension String: LocalizedError {
     public var errorDescription: String? { return self }
 }
 
-struct Updater {
+public struct Updater {
     public struct Release {
-        let tag: Tag
-        let url: String
+        public let tag: Tag
+        public let url: String
     }
     
     private let name: String
@@ -108,7 +108,8 @@ struct Updater {
             _ = syncShell("/usr/bin/hdiutil attach \(path) -mountpoint /tmp/\(self.name) -noverify -nobrowse -noautoopen")
         }
         
-        _ = syncShell("cp -rf /tmp/\(self.name)/\(self.name).app/Contents/Resources/Scripts/updater.sh $TMPDIR/updater.sh") // copy updater script to tmp folder
+        // copy updater script to tmp folder
+        _ = syncShell("cp -rf /tmp/\(self.name)/\(self.name).app/Contents/Resources/Updater_Updater.bundle/Contents/Resources/updater.sh $TMPDIR/updater.sh")
         
         print("Script is copied to $TMPDIR/updater.sh")
         
@@ -118,11 +119,33 @@ struct Updater {
             .replacingOccurrences(of: "//", with: "/")
         
         let dmg = path.replacingOccurrences(of: "file://", with: "")
-        self.asyncShell("sh $TMPDIR/updater.sh --app \(pwd) --dmg \(dmg) >/dev/null &") // run updater script in in background
+        self.asyncShell("sh $TMPDIR/updater.sh --name \(self.name) --mount /tmp/\(self.name) --app \(pwd) --dmg \(dmg) >/dev/null &") // run updater script in in background
         
         print("Run updater.sh with app: \(pwd) and dmg: \(dmg)")
         
         exit(0)
+    }
+    
+    public func cleanup() {
+        let args = CommandLine.arguments
+        
+        if let mountIndex = args.firstIndex(of: "--mount-path") {
+            if args.indices.contains(mountIndex+1) {
+                let mountPath = args[mountIndex+1]
+                asyncShell("/usr/bin/hdiutil detach \(mountPath)")
+                asyncShell("/bin/rm -rf \(mountPath)")
+                
+                print("DMG was unmounted and mountPath deleted")
+            }
+        }
+        
+        if let dmgIndex = args.firstIndex(of: "--dmg-path") {
+            if args.indices.contains(dmgIndex+1) {
+                asyncShell("/bin/rm -rf \(args[dmgIndex+1])")
+                
+                print("DMG was deleted")
+            }
+        }
     }
     
     // MARK: - helpers

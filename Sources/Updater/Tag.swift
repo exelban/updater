@@ -13,12 +13,12 @@ import Foundation
 
 extension Updater {
     public struct Tag: Comparable {
-        var major: Int
-        var minor: Int
-        var patch: Int
-        var beta: Int? = nil
+        public var major: Int
+        public var minor: Int
+        public var patch: Int
+        public var beta: Int? = nil
         
-        var raw: String
+        public var raw: String
         
         public init(_ value: String) {
             self.raw = value

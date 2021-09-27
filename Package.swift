@@ -17,7 +17,10 @@ let package = Package(
     targets: [
         .target(
             name: "Updater",
-            dependencies: []
+            dependencies: [],
+            resources: [
+                .process("updater.sh")
+            ]
         ),
         .testTarget(
             name: "UpdaterTests",
