@@ -16,13 +16,13 @@ import XCTest
 
 final class GithubTests: XCTestCase {
     func testGithubStatsVersion() {
-        let gh = Updater.Github(user: "exelban", repo: "Stats", asset: "Stats.dmg")
+        let gh = Updater.Github(user: "exelban", repo: "Stats", asset: "Stats.dmg", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in
             XCTAssertNil(error)
             XCTAssertNotNil(release)
-            XCTAssertTrue(release!.url.contains("https://github.com/exelban/stats/releases/download/"))
+            XCTAssertEqual(release?.url, "https://github.com/exelban/stats/releases/download/v2.0/Stats.dmg")
             completedExpectation.fulfill()
         }
         
@@ -30,7 +30,7 @@ final class GithubTests: XCTestCase {
     }
     
     func testGithubNoAsset() {
-        let gh = Updater.Github(user: "exelban", repo: "Stats", asset: "test.dmg")
+        let gh = Updater.Github(user: "exelban", repo: "Stats", asset: "test.dmg", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in
@@ -43,7 +43,7 @@ final class GithubTests: XCTestCase {
     }
     
     func testGithubNoRelease() {
-        let gh = Updater.Github(user: "exelban", repo: "telemetry", asset: "test")
+        let gh = Updater.Github(user: "exelban", repo: "telemetry", asset: "test", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in

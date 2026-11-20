@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "Updater",
     platforms: [
-        .macOS(.v10_13),
+        .macOS("12.0"),
     ],
     products: [
         .library(

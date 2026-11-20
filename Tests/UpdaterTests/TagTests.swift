@@ -89,13 +89,25 @@ final class TagTests: XCTestCase {
         XCTAssertTrue(Updater.Tag("0.0.0-beta1") < Updater.Tag("0.0.0"))
         XCTAssertTrue(Updater.Tag("0.0.1-beta1") < Updater.Tag("0.0.1"))
         XCTAssertTrue(Updater.Tag("0.0.1-beta1") < Updater.Tag("0.0.2"))
-        XCTAssertTrue(Updater.Tag("0.0.5-beta1") < Updater.Tag("0.0.1"))
-        XCTAssertTrue(Updater.Tag("0.5.0") < Updater.Tag("0.0.0-beta1"))
-        XCTAssertTrue(Updater.Tag("6.44.1") < Updater.Tag("4.0.1-beta4"))
-        XCTAssertTrue(Updater.Tag("v150.0.1") < Updater.Tag("0.2.2-beta4"))
+        XCTAssertFalse(Updater.Tag("0.0.5-beta1") < Updater.Tag("0.0.1"))
+        XCTAssertFalse(Updater.Tag("0.5.0") < Updater.Tag("0.0.0-beta1"))
+        XCTAssertFalse(Updater.Tag("6.44.1") < Updater.Tag("4.0.1-beta4"))
+        XCTAssertFalse(Updater.Tag("v150.0.1") < Updater.Tag("0.2.2-beta4"))
         XCTAssertTrue(Updater.Tag("0.0.535") < Updater.Tag("0.5.1-beta32"))
     }
     
+    func testUpdateChannels() {
+        let stable = Updater.Tag("v1.2.0")
+        let beta = Updater.Tag("1.3.0-beta1")
+        XCTAssertEqual(stable, Updater.Tag("1.2"))
+        XCTAssertFalse(beta < beta)
+        XCTAssertFalse(beta.isUpdate(for: beta))
+        XCTAssertFalse(beta.isUpdate(for: stable))
+        XCTAssertTrue(beta.isUpdate(for: stable, includingBetas: true))
+        XCTAssertTrue(Updater.Tag("1.3").isUpdate(for: beta))
+        XCTAssertFalse(beta.isUpdate(for: Updater.Tag("1.3.0-beta2")))
+    }
+
     func testCompareBothBetaTags() {
         XCTAssertTrue(Updater.Tag("0.0.0-beta1") < Updater.Tag("0.0.0-beta2"))
         XCTAssertTrue(Updater.Tag("0.5.0-beta15") > Updater.Tag("0.4.9-beta2"))

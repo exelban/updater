@@ -16,57 +16,24 @@ extension Updater {
         private let user: String
         private let repo: String
         private let asset: String
+        private let session: URLSession
         
-        private var url: URL {
-            return URL(string: "https://api.github.com/repos/\(self.user)/\(self.repo)/releases/latest")!
-        }
-        
-        public init(user: String, repo: String, asset: String) {
+        public init(user: String, repo: String, asset: String, session: URLSession = .shared) {
             self.user = user
             self.repo = repo
             self.asset = asset
+            self.session = session
         }
         
         public func latest(_ completion: @escaping (_ result: Release?, _ error: Error?) -> Void) {
-            let task = URLSession.shared.dataTask(with: self.url) { data, response, error in
-                guard let data = data, error == nil else {
-                    completion(nil, error)
-                    return
-                }
-                
-                do {
-                    let jsonResponse = try JSONSerialization.jsonObject(with: data, options: [])
-                    
-                    guard let jsonArray = jsonResponse as? [String: Any] else {
-                        completion(nil, "parse json error")
-                        return
-                    }
-                    
-                    guard let lastVersion = jsonArray["tag_name"] as? String else {
-                        completion(nil, "tag_name not found in response")
-                        return
-                    }
-                    
-                    guard let assets = jsonArray["assets"] as? [[String: Any]] else {
-                        completion(nil, "parse assets error")
-                        return
-                    }
-                    
-                    if let asset = assets.first(where: {$0["name"] as! String == self.asset}) {
-                        guard let downloadURL = asset["browser_download_url"] as? String else {
-                            completion(nil, "browser_download_url not found in response")
-                            return
-                        }
-                        completion(Release(tag: Tag(lastVersion), url: downloadURL), nil)
-                    } else {
-                        completion(nil, "asset with name '\(self.asset)' not found in the release")
-                        return
-                    }
-                } catch let error {
-                    completion(nil, error)
-                }
+            guard let base = URL(string: "https://api.github.com/repos"),
+                  !self.user.isEmpty, !self.repo.isEmpty,
+                  !self.user.contains("/"), !self.repo.contains("/") else {
+                completion(nil, "Invalid GitHub repository")
+                return
             }
-            task.resume()
+            let url = base.appendingPathComponent(self.user).appendingPathComponent(self.repo).appendingPathComponent("releases/latest")
+            Updater.fetchRelease(url, asset: self.asset, tagKey: "tag_name", urlKey: "browser_download_url", session: self.session, completion: completion)
         }
     }
 }

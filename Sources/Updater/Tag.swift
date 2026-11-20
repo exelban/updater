@@ -22,87 +22,51 @@ extension Updater {
         
         public init(_ value: String) {
             self.raw = value
-            
-            let arr = value.replacingOccurrences(of: "v", with: "").split(separator: ".")
-            
-            var major: Int = 0
-            var minor: Int = 0
-            var patch: Int = 0
-            var beta: Int? = nil
-            
-            switch arr.count {
-            case 1:
-                major = Int(arr[0]) ?? 0
-            case 2:
-                major = Int(arr[0]) ?? 0
-                minor = Int(arr[1]) ?? 0
-            case let count where count >= 3:
-                major = Int(arr[0]) ?? 0
-                minor = Int(arr[1]) ?? 0
-                patch = Int(arr[2]) ?? 0
-            default: break
+            let parts = Self.parse(value) ?? (0, 0, 0, nil)
+            (self.major, self.minor, self.patch, self.beta) = parts
+        }
+
+        init?(validating value: String) {
+            guard let parts = Self.parse(value) else { return nil }
+            self.raw = value
+            (self.major, self.minor, self.patch, self.beta) = parts
+        }
+
+        private static func parse(_ value: String) -> (Int, Int, Int, Int?)? {
+            let number = value.hasPrefix("v") ? value.dropFirst() : value[...]
+            let parts = number.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+            let components = parts[0].split(separator: ".", omittingEmptySubsequences: false)
+            func integer(_ text: Substring) -> Int? {
+                guard text.utf8.allSatisfy({ (48...57).contains($0) }) else { return nil }
+                return Int(text)
             }
-            
-            if let patchStr = arr.last, patchStr.contains("-") {
-                let arr = patchStr.split(separator: "-")
-                if let patchNumber = arr.first {
-                    patch = Int(patchNumber) ?? 0
-                }
-                if let betaStr = arr.last {
-                    beta = Int(betaStr.replacingOccurrences(of: "beta", with: "")) ?? 0
-                }
+            let numbers = components.compactMap(integer)
+            guard (1...3).contains(numbers.count), components.count == numbers.count else { return nil }
+            var beta: Int?
+            if parts.count == 2 {
+                guard parts[1].hasPrefix("beta") else { return nil }
+                let suffix = parts[1].dropFirst(4)
+                guard let index = suffix.isEmpty ? 0 : integer(suffix) else { return nil }
+                beta = index
             }
-            
-            self.major = major
-            self.minor = minor
-            self.patch = patch
-            self.beta = beta
+            return (numbers[0], numbers.count > 1 ? numbers[1] : 0, numbers.count > 2 ? numbers[2] : 0, beta)
+        }
+
+        public func isUpdate(for current: Tag, includingBetas: Bool = false) -> Bool {
+            return self > current && (self.beta == nil || current.beta != nil || includingBetas)
+        }
+
+        public static func == (lhs: Tag, rhs: Tag) -> Bool {
+            return (lhs.major, lhs.minor, lhs.patch, lhs.beta) == (rhs.major, rhs.minor, rhs.patch, rhs.beta)
         }
         
         public static func < (lhs: Tag, rhs: Tag) -> Bool {
-            if lhs.beta == nil && rhs.beta == nil {
-                if rhs.major > lhs.major {
-                    return true
-                }
-                
-                if rhs.minor > lhs.minor && rhs.major >= lhs.major {
-                    return true
-                }
-                
-                if rhs.patch > lhs.patch && rhs.minor >= lhs.minor && rhs.major >= lhs.major {
-                    return true
-                }
-                
-                return false
-            }
-            
-            // current version is beta + last version is beta
-            if lhs.beta != nil && rhs.beta != nil {
-                if rhs.major > lhs.major {
-                    return true
-                }
-                
-                if rhs.minor > lhs.minor && rhs.major >= lhs.major {
-                    return true
-                }
-                
-                if rhs.patch >= lhs.patch && rhs.minor >= lhs.minor && rhs.major >= lhs.major {
-                    return true
-                }
-                
-                if rhs.beta! > lhs.beta! && rhs.patch >= lhs.patch && rhs.minor >= lhs.minor && rhs.major >= lhs.major {
-                    return true
-                }
-                
-                return false
-            }
-            
-            // beta version is always lower than no-beta
-            if lhs.beta != nil || rhs.beta != nil {
-                return true
-            }
-            
-            return false
+            let left = (lhs.major, lhs.minor, lhs.patch)
+            let right = (rhs.major, rhs.minor, rhs.patch)
+            if left != right { return left < right }
+            guard let beta = lhs.beta else { return false }
+            guard let other = rhs.beta else { return true }
+            return beta < other
         }
     }
 }

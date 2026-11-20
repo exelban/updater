@@ -16,7 +16,7 @@ import XCTest
 
 final class ServerTests: XCTestCase {
     func testServerStatsVersion() {
-        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/latest")!, asset: "Stats.dmg")
+        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/latest")!, asset: "Stats.dmg", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in
@@ -32,7 +32,7 @@ final class ServerTests: XCTestCase {
     }
     
     func testServerNoAsset() {
-        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/latest")!, asset: "test.dmg")
+        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/latest")!, asset: "test.dmg", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in
@@ -45,7 +45,7 @@ final class ServerTests: XCTestCase {
     }
     
     func testServerNotFound() {
-        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/not-found")!, asset: "Stats.dmg")
+        let gh = Updater.Server(url: URL(string: "https://api.serhiy.io/v1/stats/not-found")!, asset: "Stats.dmg", session: ReleaseProtocol.session())
         let completedExpectation = expectation(description: "Completed")
         
         gh.latest() { release, error in

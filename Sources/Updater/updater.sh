@@ -1,21 +1,50 @@
 #!/bin/bash
+set -eu
 
-APP_NAME="Updater"
-DMG_PATH="$HOME/Download/$APP_NAME.dmg"
-MOUNT_PATH="/tmp/$APP_NAME"
-APPLICATION_PATH="/Applications/"
+# Older versions of the package load this helper from the incoming release.
+name=""
+mount=""
+parent=""
+while [[ $# -ge 2 ]]; do
+    case "$1" in
+        -n|--name) name="$2" ;;
+        -m|--mount) mount="$2" ;;
+        -a|--app) parent="$2" ;;
+        -d|--dmg) ;;
+        *) exit 1 ;;
+    esac
+    shift 2
+done
+[[ $# -eq 0 && -n "$name" && "$name" != */* && "$parent" == /* && "$mount" == "/tmp/$name" ]]
 
-while [[ "$#" > 0 ]]; do case $1 in
-  -d|--dmg) DMG_PATH="$2"; shift;;
-  -a|--app) APPLICATION_PATH="$2"; shift;;
-  -m|--mount) MOUNT_PATH="$2"; shift;;
-  -n|--name) APP_NAME="$2"; shift;;
-  *) echo "Unknown parameter passed: $1"; exit 1;;
-esac; shift; done
+app="${parent%/}/$name.app"
+source="$mount/$name.app"
+[[ -d "$app" && ! -L "$app" && -d "$source" && ! -L "$source" ]]
+staging="$(/usr/bin/mktemp -d "${parent%/}/.Updater.XXXXXXXX")"
+backup="$staging/previous.app"
+finish() {
+    if [[ -e "$backup" ]]; then
+        if [[ ! -e "$app" ]]; then /bin/mv "$backup" "$app"; fi
+        if [[ -e "$backup" ]]; then
+            echo "Previous application retained at $backup" >&2
+            return
+        fi
+    fi
+    /bin/rm -rf "$staging"
+}
+trap finish EXIT
 
-rm -rf $APPLICATION_PATH/$APP_NAME.app
-cp -rf $MOUNT_PATH/$APP_NAME.app $APPLICATION_PATH/$APP_NAME.app
+/usr/bin/ditto "$source" "$staging/update.app"
+requirement="$(/usr/bin/codesign -d -r- "$app" 2>&1 | /usr/bin/sed -n 's/^designated => //p')"
+[[ -n "$requirement" ]]
+/usr/bin/codesign --verify --strict --deep --all-architectures -R="$requirement" "$staging/update.app"
+/usr/bin/hdiutil detach "$mount"
+/bin/rmdir "$mount" || true
 
-$APPLICATION_PATH/$APP_NAME.app/Contents/MacOS/$APP_NAME --dmg-path "$DMG_PATH" --mount-path "$MOUNT_PATH"
-
-echo "New version started"
+/bin/mv "$app" "$backup"
+/bin/mv "$staging/update.app" "$app"
+if ! /usr/bin/open -n "$app"; then
+    /bin/mv "$app" "$staging/failed.app"
+    exit 1
+fi
+/bin/rm -rf "$backup"
